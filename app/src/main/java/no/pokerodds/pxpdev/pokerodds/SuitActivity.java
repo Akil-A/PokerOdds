@@ -1,86 +1,99 @@
 package no.pokerodds.pxpdev.pokerodds;
 
+import android.content.Context;
+import android.content.Intent;
 import android.os.Bundle;
+import android.os.Parcelable;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
+import android.support.v4.app.FragmentPagerAdapter;
 import android.support.v4.app.FragmentStatePagerAdapter;
 import android.support.v4.view.PagerAdapter;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
+import android.view.View;
 
-/**
- * Created by akil_91 on 07.12.2016.
- */
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
-public class SuitActivity extends AppCompatActivity {
 
-    /**
-     * The number of pages (wizard steps) to show in this demo.
-     */
-    private static final int NUM_PAGES = 4;
+public class SuitActivity extends AppCompatActivity implements CardChooserFragment.Callback {
 
-    /**
-     * The pager widget, which handles animation and allows swiping horizontally to access previous
-     * and next wizard steps.
-     */
-    private ViewPager mPager;
+    private static final String EXTRA_INDEX = "extraIndex";
+    private static final String EXTRA_CARD = "extraCard";
+    private static final String EXTRA_SELECTED = "extraSelected";
 
-    /**
-     * The pager adapter, which provides the pages to the view pager widget.
-     */
-    private PagerAdapter mPagerAdapter;
+    private ArrayList<Card> selected;
+
+
+    public static Intent createIntent(Context context, ArrayList<Card> selected, int index)
+    {
+        return new Intent(context, SuitActivity.class)
+                .putExtra(EXTRA_SELECTED, selected)
+                .putExtra(EXTRA_INDEX, index);
+    }
+
+    public static int extractIndex(Intent data)
+    {
+        return data.getIntExtra(EXTRA_INDEX, -1);
+    }
+
+    public static Card extractCard(Intent data)
+    {
+        return data.getParcelableExtra(EXTRA_CARD);
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.view_hearts);
 
-        // Instantiate a ViewPager and a PagerAdapter.
-        mPager = (ViewPager) findViewById(R.id.pager);
-        mPager.setOffscreenPageLimit(4);
-        mPagerAdapter = new SuitActivity.ScreenSlidePagerAdapter(getSupportFragmentManager());
-        mPager.setAdapter(mPagerAdapter);
+        setContentView(R.layout.activity_suit);
+
+        selected = getIntent().getParcelableArrayListExtra(EXTRA_SELECTED);
+
+        final ViewPager pager = (ViewPager) findViewById(R.id.pager);
+        pager.setOffscreenPageLimit(2);
+
+        pager.setAdapter(new FragmentPagerAdapter(getSupportFragmentManager()) {
+            @Override
+            public Fragment getItem(int position) {
+              return CardChooserFragment.newInstance(Card.Suit.values()[position]);
+            }
+
+            @Override
+            public CharSequence getPageTitle(int position) {
+                return getString(Card.Suit.values()[position].getNameStringId());
+            }
+
+            @Override
+            public int getCount() {
+                return Card.Suit.MAX;
+            }
+        });
+
+        pager.addOnPageChangeListener(new ViewPager.SimpleOnPageChangeListener(){
+            @Override
+            public void onPageSelected(int position) {
+                setTitle(pager.getAdapter().getPageTitle(position));
+            }
+        });
+
+        Card card = selected.get(extractIndex(getIntent()));
+        if(card.getSuit() != null){
+            pager.setCurrentItem(card.getSuit().ordinal());
+        }
+        setTitle(pager.getAdapter().getPageTitle(pager.getCurrentItem()));
     }
 
     @Override
-    public void onBackPressed() {
-        if (mPager.getCurrentItem() == 0) {
-            // If the user is currently looking at the first step, allow the system to handle the
-            // Back button. This calls finish() on this activity and pops the back stack.
-            super.onBackPressed();
-        } else {
-            // Otherwise, select the previous step.
-            mPager.setCurrentItem(mPager.getCurrentItem() - 1);
-        }
+    public void onCardClicked(Card card) {
+        setResult(RESULT_OK, getIntent().putExtra(EXTRA_CARD, card));
+        finish();
     }
 
-    /**
-     * A simple pager adapter that represents 4 HeartsPageFragment objects, in
-     * sequence.
-     */
-    private class ScreenSlidePagerAdapter extends FragmentStatePagerAdapter {
-        public ScreenSlidePagerAdapter(FragmentManager fm) {
-            super(fm);
-        }
-
-        @Override
-        public Fragment getItem(int position) {
-            switch (position) {
-                case 0:
-                    return new HeartsPageFragment();
-                case 1:
-                    return new DiamondsPageFragment();
-                case 2:
-                    return new ClubsPageFragment();
-                case 3:
-                    return new SpadesPageFragment();
-            }
-            return null;
-        }
-
-        @Override
-        public int getCount() {
-            return NUM_PAGES;
-        }
+    @Override
+    public List<Card> getSelected() {
+        return selected;
     }
 }
